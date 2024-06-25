@@ -11,7 +11,7 @@
 #include <EEPROM.h>
 
 #include "motorctl.h"
-
+#include "button.h"
 
 
 //------------------------------------------------------//
@@ -82,6 +82,8 @@ int acl_sud_err = 0;
 motorctl RightMotor(MTR1_OUP_DIR_PIN, MTR1_OUP_PWM_PIN);
 motorctl LeftMotor(MTR2_OUP_DIR_PIN, MTR2_OUP_PWM_PIN);
 
+button engine_btn(9);
+
 MCP_CAN CAN0(10);
 
 
@@ -91,9 +93,7 @@ void setup() {
 
     Serial.begin(9600);
     Serial.println("------------------------------------------------------");
-    Serial.println("");
-    Serial.println("부산동고등학교 파키오 고카트 운영체제 천둥(Cheondung)");
-    Serial.println("");
+    Serial.println("부산동고등학교 파키오 고카트 운영체제  by JuwonBang");
     Serial.print("version: ");
     Serial.println(VERSION);
 
@@ -107,52 +107,77 @@ void setup() {
     Serial.print("Debug: ");
     Serial.println(is_debug);
     Serial.println("------------------------------------------------------");
-    Serial.print("starting");
-    while(true) {
-        #if (DEBUG == ON)
-        #else
-        if(CAN0.begin(CAN_500KBPS) == CAN_OK) Serial.print("Can init ok!!\r\n"); // 500Kbs의 속도로 CAN버스를 초기화 합니다.
-        else Serial.print("Can init fail!!\r\n");
-        #endif
 
-        delay(300);
-        Serial.print(".");
+    Serial.print("Ready");
+    int toggle_sidong = 0;
+    while(toggle_sidong == 0) {
+        int i = engine_btn.getButton();
+        if (i == 1) {
+            toggle_sidong = 1;
+        }
     }
-    Serial.println("");
+
+//    if(CAN0.begin(CAN_500KBPS) == CAN_OK) Serial.print("Can init ok!!\r\n"); // 500Kbs의 속도로 CAN버스를 초기화 합니다.
+//    else Serial.print("Can init fail!!\r\n");
+//
+//    delay(300);
+//    Serial.print(".");
+//    Serial.println("");
+//    Serial.println("done.");
 
 }
 
 void loop() {
-    acl_val = map(analogRead(ACL_INP_PIN), ACL_INP_MIN, ACL_INP_MAX, 0, 1024) / 4;
-    acl_val = constrain(acl_val, 0, 255);
-
-    brk_val = map(analogRead(BRK_INP_PIN), BRK_INP_MIN, BRK_INP_MAX, 0, 1024) / 4;
-    brk_val = constrain(brk_val, 0, 255);
-
-#if (WHEEL == ON)
-    mtr1_val = acl_val - brk_val - whl_mtr_val;
-    mtr2_val = acl_val - brk_val + whl_mtr_val;
-#elif (WHEEL == OFF)
-    mtr1_val = acl_val - brk_val;
-  mtr2_val = acl_val - brk_val;
-#endif
-
-// 급격한 변화 방지
-    if (acl_val) {
-        acl_val = 0;
-        acl_sud_err = 1;
-    } else {
-        acl_sud_err = 0;
+    int result = engine_btn.getButton();
+    if (result != 0) {
+        Serial.println(result);
     }
-
-    LeftMotor.Move(mtr_dir, mtr1_val);
-    RightMotor.Move(mtr_dir, mtr2_val);
-
-    if (Serial.read() == 'c') {
-        if(mtr_dir == 1) {
-            mtr_dir = 0;
-        } else {
-            mtr_dir = 1;
-        }
-    }
+//    Serial.println(engine_btn.getSidong());
+//    acl_val = map(analogRead(ACL_INP_PIN), ACL_INP_MIN, ACL_INP_MAX, 0, 1024) / 4;
+//    acl_val = constrain(acl_val, 0, 255);
+//
+//    brk_val = map(analogRead(BRK_INP_PIN), BRK_INP_MIN, BRK_INP_MAX, 0, 1024) / 4;
+//    brk_val = constrain(brk_val, 0, 255);
+//
+//#if (WHEEL == ON)
+//    mtr1_val = acl_val - brk_val - whl_mtr_val;
+//    mtr2_val = acl_val - brk_val + whl_mtr_val;
+//#elif (WHEEL == OFF)
+//    mtr1_val = acl_val - brk_val;
+//  mtr2_val = acl_val - brk_val;
+//#endif
+//// 급격한 변화 방지
+//    if (acl_val) {
+//        acl_val = 0;
+//        acl_sud_err = 1;
+//    } else {
+//        acl_sud_err = 0;
+//    }
+//
+//    LeftMotor.Move(mtr_dir, mtr1_val);
+//    RightMotor.Move(mtr_dir, mtr2_val);
+//
+//    if (Serial.read() == 'c') {
+//        if(mtr_dir == 1) {
+//            mtr_dir = 0;
+//        } else {
+//            mtr_dir = 1;
+//        }
+//    }
 }
+
+void emergency(int err_no, int type = 0) {
+// 타입 0  -> 정지할 수준은 아님, 경고음 띠딩
+// 타입 11 -> 천천히 속도를 줄이며 정지함.(운전자가 안전한 정지), 경고음 삐비빅, 깜빡이
+// 타입 12 -> 퐉!! 정지함 (운전자가 위험한 정지), 경고음 삐비비비빅, 깜빡이
+// 타입 24 -> 기본 설정 중에 중요한 센서가 누락됨.
+// 타입 24 ->
+
+// 타입 ?? -> 모터 관련 부품 외 아두이노 리셋,
+// 타입 ?? -> 전원 스위치를 죽임. 및 아두이노 리셋
+
+//// 타입 + 번호 -> 타입
+    if(type == 3) {
+
+    }
+};
